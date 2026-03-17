@@ -1,0 +1,26 @@
+{
+  "name": "ofx-converter",
+  "version": "1.0.0",
+  "description": "Premium Bank Statement to OFX Conversion Utility",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.bank2ofx.enterprise",
+    "productName": "Bank2OFX Pro",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable"
+    }
+  }
+}
