@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 const url = require('url');
 
@@ -32,7 +32,9 @@ function createWindow() {
   win.webContents.openDevTools(); 
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Clear storage data to ensure no Service Workers or cache interfere with local file loading
+  await session.defaultSession.clearStorageData();
   createWindow();
 
   app.on('activate', () => {
