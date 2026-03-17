@@ -5,26 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bank2OFX Pro - Enterprise Edition</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.260.0/lucide.min.css" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <script>
-        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('PWA: Service Worker Registered'))
-                    .catch(err => console.log('PWA: Service Worker Failed', err));
-            });
-        }
-    </script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -79,6 +64,7 @@
         </header>
 
         <div id="mainContainer" class="space-y-6">
+            <!-- Settings Bar -->
             <div id="settingsPanel" class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm transition-all duration-500">
                 <div id="settingsGrid" class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 items-end">
                     <div class="space-y-1.5">
@@ -118,6 +104,7 @@
             </div>
 
             <main>
+                <!-- Upload Zone -->
                 <section id="uploadSection" class="py-12">
                     <input type="file" id="fileInput" accept=".csv, .xls, .xlsx, .pdf" class="hidden">
                     <div id="dropZone" class="bg-white border-2 border-dashed border-slate-200 rounded-[3rem] p-32 text-center hover:border-indigo-400 hover:bg-indigo-50/20 transition-all cursor-pointer group shadow-sm">
@@ -130,11 +117,13 @@
                     </div>
                 </section>
 
+                <!-- Processing State -->
                 <div id="loadingState" class="hidden py-32 text-center">
                     <div class="w-12 h-12 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
                     <h3 class="text-xl font-bold text-slate-800">Processing Ledger...</h3>
                 </div>
 
+                <!-- Preview Table -->
                 <section id="previewContainer" class="hidden space-y-4">
                     <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
                         <div class="px-8 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
@@ -175,6 +164,7 @@
                     </div>
                 </section>
 
+                <!-- Result View -->
                 <section id="resultContainer" class="hidden py-12 text-center">
                     <div class="bg-white rounded-[3rem] p-16 shadow-2xl border border-slate-100 max-w-xl mx-auto">
                         <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -201,7 +191,7 @@
             duplicates: new Set(),
             startDate: null,
             endDate: null,
-            visibleCols: [] 
+            visibleCols: []
         };
 
         const els = {
@@ -344,7 +334,7 @@
                 date: ['date', 'posted', 'trans date', 'fecha'],
                 debit: ['debit', 'withdrawal', 'amount out', 'paid out', 'payment', 'charge', 'cargo', 'retiro'],
                 credit: ['credit', 'deposit', 'amount in', 'paid in', 'received', 'abono'],
-                desc: ['desc', 'trans', 'memo', 'narrative', 'payee', 'details', 'concepto', 'referencia']
+                desc: ['desc', 'particulars', 'trans', 'memo', 'narrative', 'payee', 'details', 'concepto', 'referencia']
             };
 
             state.rawData.slice(0, 10).forEach((row, rowIdx) => {
@@ -369,8 +359,10 @@
                 const min = new Date(Math.min(...dates));
                 const max = new Date(Math.max(...dates));
                 const formatDate = (d) => d.toISOString().split('T')[0];
-                els.startDate.min = els.endDate.min = formatDate(min);
-                els.startDate.max = els.endDate.max = formatDate(max);
+                els.startDate.value = formatDate(min);
+                els.endDate.value = formatDate(max);
+                state.startDate = min;
+                state.endDate = max;
             }
         }
 
@@ -420,14 +412,15 @@
 
             state.rawData.forEach((row, rowIdx) => {
                 if (els.skipHeader.checked && rowIdx === 0) return;
-                if (els.excludeDupes.checked && state.duplicates.has(rowIdx)) return;
-
+                
                 const dateObj = robustParseDate(row[state.mapping.date]);
                 if (dateObj) {
                     const rowDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
                     if (state.startDate && rowDate < state.startDate) return;
                     if (state.endDate && rowDate > state.endDate) return;
                 }
+
+                if (els.excludeDupes.checked && state.duplicates.has(rowIdx)) return;
 
                 validCount++;
                 const inv = els.invertAmounts.checked ? -1 : 1;
@@ -444,8 +437,8 @@
                     let v = cell || "";
                     td.innerText = v instanceof Date ? v.toLocaleDateString() : v;
 
-                    if (colIdx === state.mapping.debit && v) td.innerHTML = `<span class="text-rose-600 font-bold">${td.innerText}</span>`;
-                    if (colIdx === state.mapping.credit && v) td.innerHTML = `<span class="text-emerald-600 font-bold">${td.innerText}</span>`;
+                    if (colIdx === state.mapping.debit && v && cleanAmount(v) !== 0) td.innerHTML = `<span class="text-rose-600 font-bold">${td.innerText}</span>`;
+                    if (colIdx === state.mapping.credit && v && cleanAmount(v) !== 0) td.innerHTML = `<span class="text-emerald-600 font-bold">${td.innerText}</span>`;
 
                     td.contentEditable = "true";
                     td.onblur = () => { state.rawData[rowIdx][colIdx] = td.innerText; renderTable(); };
@@ -468,13 +461,18 @@
             if (!val) return null;
             if (val instanceof Date) return val;
             let s = String(val).trim();
+            
+            // Support "DD MM YYYY" specifically
             let parts = s.split(/[\/\-\. ]+/);
-            if (parts.length >= 3) {
-                let p1 = parseInt(parts[0]), p2 = parseInt(parts[1]), p3 = parseInt(parts[2]);
-                if (p3 < 100) p3 += 2000;
-                if (p1 > 12) return new Date(p3, p2 - 1, p1);
-                if (p2 > 12) return new Date(p3, p1 - 1, p2);
+            if (parts.length === 3) {
+                let d = parseInt(parts[0]), m = parseInt(parts[1]), y = parseInt(parts[2]);
+                if (y < 100) y += 2000;
+                // Basic validation
+                if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                    return new Date(y, m - 1, d);
+                }
             }
+            
             const res = new Date(s);
             return isNaN(res) ? null : res;
         }
@@ -493,16 +491,20 @@
 
             state.rawData.forEach((row, idx) => {
                 if (els.skipHeader.checked && idx === 0) return;
-                if (els.excludeDupes.checked && state.duplicates.has(idx)) return;
+                
                 const dateObj = robustParseDate(row[state.mapping.date]);
                 if (dateObj) {
                     const rowDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
                     if (state.startDate && rowDate < state.startDate) return;
                     if (state.endDate && rowDate > state.endDate) return;
-                }
+                } else return; // Skip if no valid date
+
+                if (els.excludeDupes.checked && state.duplicates.has(idx)) return;
+
                 const inv = els.invertAmounts.checked ? -1 : 1;
                 const amt = (cleanAmount(row[state.mapping.credit]) - Math.abs(cleanAmount(row[state.mapping.debit]))) * inv;
-                if (dateObj && amt !== 0) {
+                
+                if (amt !== 0) {
                     const yyyymmdd = `${dateObj.getFullYear()}${String(dateObj.getMonth() + 1).padStart(2, '0')}${String(dateObj.getDate()).padStart(2, '0')}`;
                     if (yyyymmdd < minD) minD = yyyymmdd;
                     if (yyyymmdd > maxD) maxD = yyyymmdd;
@@ -512,7 +514,7 @@
                 }
             });
 
-            if (count === 0) return showToast("No exportable data found");
+            if (count === 0) return showToast("No exportable data found for selected range");
 
             state.ofxContent = `OFXHEADER:100\r\nDATA:OFXSGML\r\nVERSION:102\r\nSECURITY:NONE\r\nENCODING:USASCII\r\nCHARSET:1252\r\nCOMPRESSION:NONE\r\n\r\n<OFX>\r\n<SIGNONMSGSRSV1>\r\n<SONRS>\r\n<STATUS><CODE>0</CODE><SEVERITY>INFO</SEVERITY></STATUS>\r\n<DTSERVER>${ts}</DTSERVER>\r\n<LANGUAGE>ENG</LANGUAGE>\r\n<FI><ORG>Bank</ORG><FID>12345</FID></FI>\r\n</SONRS>\r\n</SIGNONMSGSRSV1>\r\n<BANKMSGSRSV1>\r\n<STMTTRNRS>\r\n<TRNUID>${ts}</TRNUID>\r\n<STATUS><CODE>0</CODE><SEVERITY>INFO</SEVERITY></STATUS>\r\n<STMTRS>\r\n<CURDEF>USD</CURDEF>\r\n<BANKACCTFROM>\r\n<BANKID>${els.bankId.value || '123456789'}</BANKID>\r\n<ACCTID>${els.accountId.value || '987654321'}</ACCTID>\r\n<ACCTTYPE>CHECKING</ACCTTYPE>\r\n</BANKACCTFROM>\r\n<BANKTRANLIST>\r\n<DTSTART>${minD}120000</DTSTART>\r\n<DTEND>${maxD}120000</DTEND>\r\n${txns}</BANKTRANLIST>\r\n<LEDGERBAL>\r\n<BALAMT>0.00</BALAMT>\r\n<DTASOF>${ts}</DTASOF>\r\n</LEDGERBAL>\r\n</STMTRS>\r\n</STMTTRNRS>\r\n</BANKMSGSRSV1>\r\n</OFX>`;
 
