@@ -7,14 +7,13 @@ function createWindow() {
     height: 800,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js') // Optional if needed
+      contextIsolation: true
     },
     icon: path.join(__dirname, 'icon-512.png')
   });
 
   win.loadFile('index.html');
-  // win.webContents.openDevTools(); // Uncomment for debugging
+  win.webContents.openDevTools(); // Enable DevTools for debugging
 }
 
 app.whenReady().then(() => {
