@@ -1,5 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const url = require('url');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -7,13 +8,28 @@ function createWindow() {
     height: 800,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      sandbox: false,
+      webSecurity: false // Temporary for debugging ERR_FAILED
     },
     icon: path.join(__dirname, 'icon-512.png')
   });
 
-  win.loadFile(path.join(__dirname, 'index.html'));
-  win.webContents.openDevTools(); // Enable DevTools for debugging
+  // Use absolute path with proper file URL formatting
+  const indexPath = path.join(__dirname, 'index.html');
+  const indexUrl = url.pathToFileURL(indexPath).href;
+
+  console.log('Attempting to load:', indexUrl);
+
+  win.loadURL(indexUrl).catch(err => {
+    console.error('Failed to load index.html:', err);
+  });
+
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`Load failed: ${errorCode} ${errorDescription} URL: ${validatedURL}`);
+  });
+
+  win.webContents.openDevTools(); 
 }
 
 app.whenReady().then(() => {
