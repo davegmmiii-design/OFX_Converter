@@ -12,7 +12,7 @@ function createWindow() {
     icon: path.join(__dirname, 'icon-512.png')
   });
 
-  win.loadFile('index.html');
+  win.loadFile(path.join(__dirname, 'index.html'));
   win.webContents.openDevTools(); // Enable DevTools for debugging
 }
 
